@@ -6,8 +6,7 @@ from models import *
 from experiment import VAEXperiment
 import torch.backends.cudnn as cudnn
 from pytorch_lightning import Trainer
-from pytorch_lightning.logging import TestTubeLogger
-
+# from pytorch_lightning.logging import TestTubeLogger
 
 parser = argparse.ArgumentParser(description='Generic runner for VAE models')
 parser.add_argument('--config',  '-c',
@@ -24,12 +23,12 @@ with open(args.filename, 'r') as file:
         print(exc)
 
 
-tt_logger = TestTubeLogger(
-    save_dir=config['logging_params']['save_dir'],
-    name=config['logging_params']['name'],
-    debug=False,
-    create_git_tag=False,
-)
+# tt_logger = TestTubeLogger(
+#     save_dir=config['logging_params']['save_dir'],
+#     name=config['logging_params']['name'],
+#     debug=False,
+#     create_git_tag=False,
+# )
 
 # For reproducibility
 torch.manual_seed(config['logging_params']['manual_seed'])
@@ -41,14 +40,13 @@ model = vae_models[config['model_params']['name']](**config['model_params'])
 experiment = VAEXperiment(model,
                           config['exp_params'])
 
-runner = Trainer(default_save_path=f"{tt_logger.save_dir}",
-                 min_nb_epochs=1,
-                 logger=tt_logger,
-                 log_save_interval=100,
-                 train_percent_check=1.,
-                 val_percent_check=1.,
+runner = Trainer(# default_save_path=f"{tt_logger.save_dir}",
+                 min_epochs=1,
+                 # log_every_n_steps=4,
+                 # train_percent_check=1.,
+                 # val_percent_check=1.,
                  num_sanity_val_steps=5,
-                 early_stop_callback = False,
+                 # callbacks=[TensorboardGenerativeModelImageSampler(normalize=True)],
                  **config['trainer_params'])
 
 print(f"======= Training {config['model_params']['name']} =======")
