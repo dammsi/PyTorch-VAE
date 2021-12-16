@@ -136,7 +136,7 @@ class VanillaVAE(BaseVAE):
         mu = args[2]
         log_var = args[3]
 
-        kld_weight = kwargs['M_N']  # Account for the minibatch samples from the dataset
+        kld_weight = kwargs['M_N']  # Account for the minibatch samples from the dataset: n_batch / n_training_samples
         recons_loss = F.mse_loss(recons, input)
 
         kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
@@ -163,15 +163,15 @@ class VanillaVAE(BaseVAE):
 
         ### construct distributions
 
-        # q_z = Normal(mu, log_var.exp())
+        q_z = Normal(mu, (0.5 * log_var).exp())
         p_x_z = Normal(recons, self.logsigma.exp())
-        # p_z = Normal(torch.zeros(self.latent_dim).to(input.device), torch.ones(self.latent_dim).to(input.device))
+        p_z = Normal(torch.zeros(self.latent_dim).to(input.device), torch.ones(self.latent_dim).to(input.device))
 
         recons_loss = - p_x_z.log_prob(input).mean(0).sum()  # SD: maximize log_likelihood => minimize - log_likelihood
-        # kld_loss = kl_divergence(q_z, p_z).mean(0).sum()
-        kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
+        kld_loss = kl_divergence(q_z, p_z).mean(0).sum()
+        # kld_loss = torch.mean(-0.5 * torch.sum(1 + log_var - mu ** 2 - log_var.exp(), dim=1), dim=0)
 
-        loss = recons_loss + 50 * kld_loss
+        loss = recons_loss + kld_loss
         return {'loss': loss, 'Reconstruction_Loss': recons_loss, 'KLD': -kld_loss}
 
     def sample(self,
