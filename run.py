@@ -46,7 +46,6 @@ runner = Trainer(# default_save_path=f"{tt_logger.save_dir}",
                  # train_percent_check=1.,
                  # val_percent_check=1.,
                  num_sanity_val_steps=5,
-                 # callbacks=[TensorboardGenerativeModelImageSampler(normalize=True)],
                  **config['trainer_params'])
 
 print(f"======= Training {config['model_params']['name']} =======")
