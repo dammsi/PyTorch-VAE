@@ -41,13 +41,19 @@ class VAEXperiment(pl.LightningModule):
         self.curr_device = batch.device
 
         results = self.forward(batch)
+        mu = results[2]
+        log_var = results[3]
+
         # SD: change to *SD_*loss_function
         train_loss = self.model.SD_loss_function(*results,
-                                              M_N=self.params['batch_size'] / self.num_train_imgs,
-                                              optimizer_idx=optimizer_idx,
-                                              batch_idx=batch_idx)
+                                                 M_N=self.params['batch_size'] / self.num_train_imgs,
+                                                 optimizer_idx=optimizer_idx,
+                                                 batch_idx=batch_idx)
         self.log("train_loss", train_loss, on_step=True, on_epoch=False, prog_bar=False, logger=True)
-        self.log("log_var", { f"{i}" : k for i,k in enumerate(results[3].mean(0))}, on_step=True, on_epoch=False, prog_bar=False, logger=True)
+        # self.log("log_var", { f"{i}" : k for i,k in enumerate(results[3].mean(0))}, on_step=True, on_epoch=False, prog_bar=False, logger=True)
+        if self.global_step % 50 == 0:
+            self.logger.experiment.add_histogram("enc_mu", mu, global_step=self.global_step)
+            self.logger.experiment.add_histogram("log_var", log_var, global_step=self.global_step)
         self.log("log_sigma", self.model.logsigma, on_step=True, on_epoch=False, prog_bar=False, logger=True)
 
         return train_loss
@@ -58,14 +64,15 @@ class VAEXperiment(pl.LightningModule):
 
         results = self.forward(batch)
         val_loss = self.model.SD_loss_function(*results,
-                                            M_N=self.params['batch_size'] / self.num_val_imgs,
-                                            optimizer_idx=optimizer_idx,
-                                            batch_idx=batch_idx)
+                                               M_N=self.params['batch_size'] / self.num_val_imgs,
+                                               optimizer_idx=optimizer_idx,
+                                               batch_idx=batch_idx)
         self.log("val_loss", val_loss, prog_bar=False, logger=True)
 
         return val_loss
 
     def on_train_start(self):
+        self.logger.log_hyperparams(self.params)  # TODO: some hparams are missing?
         samples_orig = next(iter(self.val_dataloader))
         self.logger.experiment.add_images('samples_orig', samples_orig[:64])
 
@@ -197,10 +204,10 @@ class VAEXperiment(pl.LightningModule):
                                             transforms.CenterCrop(148),
                                             transforms.Resize(self.params['img_size']),
                                             transforms.ToTensor()])
-                                            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                            #                      std=[0.229, 0.224, 0.225])])
-                                            # SetRange])
-                                            # SetScale])
+            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+            #                      std=[0.229, 0.224, 0.225])])
+            # SetRange])
+            # SetScale])
         else:
             raise ValueError('Undefined dataset type')
         return transform
@@ -213,7 +220,6 @@ class VAEXperiment(pl.LightningModule):
             image = Image.open(img_loc).convert("RGB")
             pics[idx] = self.full_dataset.transform(image)
         return pics
-
 
 
 class CustomDataSet(Dataset):
